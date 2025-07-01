@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Mariage de Charlotte et Charly</title>
+<link href="https://fonts.googleapis.com/css2?family=Parisienne&family=Quicksand&display=swap" rel="stylesheet" />
+<style>
+  /* Styles bohème doux */
+  body {
+    font-family: 'Quicksand', sans-serif;
+    background: #fdf6f0;
+    margin: 0;
+    color: #5a4d41;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+  }
+  header {
+    text-align: center;
+    padding: 2rem 1rem 1rem;
+    font-family: 'Parisienne', cursive;
+  }
+  header h1 {
+    font-size: 3rem;
+    margin: 0;
+    color: #a67b5b;
+  }
+  header h2 {
+    font-weight: normal;
+    margin-top: 0.3rem;
+    color: #8f7a66;
+  }
+  .buttons {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin: 1rem;
+  }
+  .upload-btn {
+    cursor: pointer;
+    background: #f5e6d3;
+    border: 2px solid #c7b59a;
+    padding: 0.7rem 1.2rem;
+    border-radius: 30px;
+    font-weight: 600;
+    color: #8a6a42;
+    transition: background 0.3s ease;
+  }
+  .upload-btn:hover {
+    background: #e9d9c3;
+  }
+  #upload {
+    display: none;
+  }
+  button {
+    cursor: pointer;
+    background: #a67b5b;
+    border: none;
+    padding: 0.7rem 1.2rem;
+    border-radius: 30px;
+    font-weight: 600;
+    color: #fdf6f0;
+    transition: background 0.3s ease;
+  }
+  button:hover {
+    background: #8e6240;
+  }
+  .gallery {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 0.4rem;
+    padding: 0 0.5rem 2rem;
+    overflow-y: auto;
+    flex-grow: 1;
+  }
+  .gallery img {
+    width: 100%;
+    height: auto;
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.15);
+  }
+  .slideshow {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+    padding: 1rem;
+  }
+  .slideshow img {
+    max-width: 90vw;
+    max-height: 70vh;
+    border-radius: 16px;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.2);
+  }
+  .slideshow button {
+    margin: 0.5rem 1rem;
+    font-size: 1.5rem;
+    border-radius: 50%;
+    width: 48px;
+    height: 48px;
+    line-height: 48px;
+    padding: 0;
+  }
+  .footer {
+    text-align: center;
+    font-size: 0.9rem;
+    padding: 1rem;
+    background: #f5e6d3;
+    color: #8a6a42;
+    font-style: italic;
+  }
+  @media (max-width: 600px) {
+    header h1 {
+      font-size: 2.2rem;
+    }
+    header h2 {
+      font-size: 1rem;
+    }
+    .gallery {
+      grid-template-columns: repeat(2, 1fr);
+      padding-bottom: 3rem;
+    }
+    .slideshow img {
+      max-width: 95vw;
+      max-height: 50vh;
+    }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Mariage de Charlotte et Charly</h1>
+  <h2>Juillet 2025</h2>
+</header>
+
+<div class="buttons">
+  <label class="upload-btn" for="upload">📷 Ajouter des photos</label>
+  <input type="file" id="upload" accept="image/*" multiple />
+  <button id="toggleView">🔁 Basculer la vue</button>
+</div>
+
+<div class="gallery" id="gallery"></div>
+
+<div class="slideshow" id="slideshow">
+  <button aria-label="Photo précédente" onclick="prevSlide()">⬅️</button>
+  <img id="slideImage" src="" alt="Photo" />
+  <button aria-label="Photo suivante" onclick="nextSlide()">➡️</button>
+</div>
+
+<div class="footer">Merci pour vos photos ❤️</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
+<script>
+  // Ta config Supabase
+  const SUPABASE_URL = 'https://fgapcqngfvgbvnurgmbc.supabase.co';
+  const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZnYXBjcW5nZnZnYnZudXJnbWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTE0MDI1NzUsImV4cCI6MjA2Njk3ODU3NX0._6e6BWXCzjBVPtDLSQeegZQSbaEuJ1CI5qlgAxc25zE';
+
+  const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+  let images = [];
+  let currentIndex = 0;
+  let isGallery = true;
+
+  const gallery = document.getElementById('gallery');
+  const slideshow = document.getElementById('slideshow');
+  const slideImage = document.getElementById('slideImage');
+  const toggleBtn = document.getElementById('toggleView');
+  const uploadInput = document.getElementById('upload');
+
+  // Affiche la galerie en grille
+  function renderGallery() {
+    gallery.innerHTML = images.map(src => `<img src="${src}" alt="Photo de l'évènement">`).join('');
+  }
+
+  // Affiche une image dans le diaporama
+  function showSlide(index) {
+    if (images.length === 0) return;
+    slideImage.src = images[index];
+  }
+
+  function nextSlide() {
+    currentIndex = (currentIndex + 1) % images.length;
+    showSlide(currentIndex);
+  }
+
+  function prevSlide() {
+    currentIndex = (currentIndex - 1 + images.length) % images.length;
+    showSlide(currentIndex);
+  }
+
+  toggleBtn.addEventListener('click', () => {
+    isGallery = !isGallery;
+    gallery.style.display = isGallery ? 'grid' : 'none';
+    slideshow.style.display = isGallery ? 'none' : 'flex';
+    if (!isGallery) showSlide(currentIndex);
+  });
+
+  // Charger les photos depuis Supabase Storage
+  async function loadImages() {
+    const { data, error } = await supabase.storage.from('photos').list('', { limit: 100, offset: 0 });
+    if (error) {
+      console.error('Erreur chargement photos:', error);
+      return;
+    }
+    images = [];
+    for (const file of data) {
+      const { data: urlData } = supabase.storage.from('photos').getPublicUrl(file.name);
+      images.push(urlData.publicUrl);
+    }
+    renderGallery();
+  }
+
+  // Upload des fichiers sélectionnés vers Supabase Storage
+  uploadInput.addEventListener('change', async (event) => {
+    const files = Array.from(event.target.files);
+    for (const file of files) {
+      const filePath = `${Date.now()}_${file.name}`;
+      const { error } = await supabase.storage.from('photos').upload(filePath, file);
+      if (error) {
+        alert('Erreur upload : ' + error.message);
+        continue;
+      }
+    }
+    // Recharger la liste après upload
+    await loadImages();
+    // Reset input
+    uploadInput.value = '';
+  });
+
+  // Vérifier si on est admin via le paramètre URL
+  function isAdmin() {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('admin') === 'charly1904';
+  }
+
+  // Télécharger toutes les photos en ZIP (admin)
+  function downloadAllPhotos() {
+    if (images.length === 0) {
+      alert('Pas de photos à télécharger.');
+      return;
+    }
+    import('https://cdn.jsdelivr.net/npm/jszip@3.7.1/dist/jszip.min.js').then(({default: JSZip}) => {
+      const zip = new JSZip();
+      const imgFolder = zip.folder('photos');
+      const promises = images.map((url, idx) =>
+        fetch(url)
+          .then(res => res.blob())
+          .then(blob => {
+            imgFolder.file(`photo_${idx+1}.jpg`, blob);
+          })
+      );
+      Promise.all(promises).then(() => {
+        zip.generateAsync({type:"blob"}).then(content => {
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(content);
+          a.download = 'photos_mariage.zip';
+          a.click();
+        });
+      });
+    });
+  }
+
+  window.addEventListener('load', () => {
+    loadImages();
+    if (isAdmin()) {
+      const btn = document.createElement('button');
+      btn.textContent = '⬇️ Télécharger toutes les photos (admin)';
+      btn.style.margin = '1rem auto';
+      btn.style.display = 'block';
+      btn.onclick = downloadAllPhotos;
+      document.body.insertBefore(btn
